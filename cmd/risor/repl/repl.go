@@ -13,7 +13,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/risor-io/risor"
 	"github.com/risor-io/risor/compiler"
-	"github.com/risor-io/risor/internal/cfg"
 	"github.com/risor-io/risor/object"
 	"github.com/risor-io/risor/parser"
 	"github.com/risor-io/risor/vm"
@@ -63,7 +62,7 @@ func Run(ctx context.Context, options []risor.Option) error {
 		return clearLine + ">>> " + accumulate
 	}
 
-	r := cfg.NewRisorConfig()
+	r := risor.NewConfig()
 	for _, opt := range options {
 		opt(r)
 	}
@@ -170,7 +169,7 @@ func Run(ctx context.Context, options []risor.Option) error {
 	})
 }
 
-func getEvaluator(cfg *cfg.RisorConfig) func(ctx context.Context, source string) (object.Object, error) {
+func getEvaluator(cfg *risor.Config) func(ctx context.Context, source string) (object.Object, error) {
 
 	var c *compiler.Compiler
 	var v *vm.VirtualMachine
@@ -201,6 +200,9 @@ func getEvaluator(cfg *cfg.RisorConfig) func(ctx context.Context, source string)
 			v = vm.New(code, cfg.VMOpts()...)
 		}
 		if err := v.Run(ctx); err != nil {
+			// Update the IP to be after the last instruction, so that next
+			// time around we start in the right location.
+			v.SetIP(code.InstructionCount())
 			color.Red(err.Error())
 			return nil, err
 		}
